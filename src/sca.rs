@@ -29,7 +29,6 @@ enum RuleEntry {
 
 #[derive(Debug, Clone)]
 struct SoundRule {
-    raw: String,
     target: Vec<char>,
     replacement: Vec<char>,
     is_reverse: bool,
@@ -215,7 +214,7 @@ impl SoundChangeApplier {
     fn build_replacement(&self, word: &[char], state: &MatchState, rule: &SoundRule) -> Vec<char> {
         if rule.is_reverse {
             let slice = &word[state.start..state.start + state.length];
-            let mut reversed: Vec<char> = slice.iter().rev().copied().collect();
+            let reversed: Vec<char> = slice.iter().rev().copied().collect();
             return reversed;
         }
 
@@ -385,7 +384,6 @@ fn parse_rules(src: &str, rewrites: &[RewriteRule]) -> Result<Vec<RuleEntry>, So
         let is_reverse = replacement_raw == "\\\\";
 
         let rule = SoundRule {
-            raw: line.to_string(),
             target,
             replacement,
             is_reverse,
