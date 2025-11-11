@@ -24,6 +24,10 @@ struct Cli {
     /// Print a short processing summary to stderr
     #[arg(long)]
     stats: bool,
+
+    /// Output the transformed lexicon as CSV with input/output columns
+    #[arg(long)]
+    csv: bool,
 }
 
 fn main() {
@@ -48,7 +52,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|err| Box::new(SoundChangeCliError::from(err)) as Box<dyn std::error::Error>)?;
     let processed = applier.apply_lexicon(&lexicon);
 
-    let output = render_output(&processed);
+    let output = if cli.csv {
+        render_csv_output(&processed)
+    } else {
+        render_text_output(&processed)
+    };
 
     if let Some(path) = &cli.output {
         fs::write(path, output)?;
@@ -81,7 +89,7 @@ fn join_lines(lines: &[String]) -> String {
     }
 }
 
-fn render_output(processed: &ProcessedLexicon) -> String {
+fn render_text_output(processed: &ProcessedLexicon) -> String {
     let mut lines = Vec::with_capacity(processed.entries.len());
     for entry in &processed.entries {
         match &entry.gloss {
@@ -94,6 +102,46 @@ fn render_output(processed: &ProcessedLexicon) -> String {
     } else {
         String::new()
     }
+}
+
+fn render_csv_output(processed: &ProcessedLexicon) -> String {
+    let mut lines = Vec::with_capacity(processed.entries.len() + 1);
+    lines.push("input,output,gloss".to_string());
+    for entry in &processed.entries {
+        let gloss = entry.gloss.as_deref().unwrap_or("");
+        let mut row = String::new();
+        row.push_str(&csv_escape(&entry.original));
+        row.push(',');
+        row.push_str(&csv_escape(&entry.transformed));
+        row.push(',');
+        row.push_str(&csv_escape(gloss));
+        lines.push(row);
+    }
+    lines.join("\n") + "\n"
+}
+
+fn csv_escape(value: &str) -> String {
+    if value.is_empty() {
+        return String::new();
+    }
+
+    let needs_quotes =
+        value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r');
+
+    if !needs_quotes {
+        return value.to_string();
+    }
+
+    let mut escaped = String::with_capacity(value.len() + 2);
+    escaped.push('"');
+    for ch in value.chars() {
+        if ch == '"' {
+            escaped.push('"');
+        }
+        escaped.push(ch);
+    }
+    escaped.push('"');
+    escaped
 }
 
 fn report_stats(applier: &SoundChangeApplier, processed: &ProcessedLexicon) {
