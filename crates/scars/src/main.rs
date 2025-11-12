@@ -1,5 +1,3 @@
-mod sca;
-
 use clap::Parser;
 use sca::{ProcessedLexicon, SoundChangeApplier, SoundChangeError};
 use serde::Deserialize;
